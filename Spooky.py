@@ -31,6 +31,9 @@ class Spooky:
         # Delay between lightning flashes range in ms
         self.next_flash_delay_min = 0
         self.next_flash_delay_max = 75
+        # Range for brightness variance of background lighting
+        self.b_variance_min = 0
+        self.b_variance_max = 10
         
         
     def startup(self):
@@ -69,7 +72,37 @@ class Spooky:
             
         colour = self.bg_colours[self.current_bg_i]
         
-        self.set_all(colour)
+        # Vary the brightness on each LED a little to make it look more natural
+        for i in range(self.NUM_LEDS):
+            variance = random.randint(0, 10)
+            r, g, b = colour
+            r -= variance
+            g -= variance
+            b -= variance
+            
+            self.strip.set_rgb(i, r, g, b)
+            
+    def vary_brightness(self, col):
+        """
+            Varies the brightness of an RGB value by a random amount within the
+            specified min and max
+            
+            Args:
+                col: Tuple of RGB value
+                
+            Returns:
+                Tuple of new RGB value
+        """
+        # Get variance
+        v = random.randint(self.b_variance_min, self.b_variance_max)
+        # Decide if positive or negative variance
+        i = random.randint(0,1)
+        if i == 0:
+            v = -v
+        
+        for i in range(len(col)):
+            
+            
             
     def toggle_lightning(self, button_a):
         """
