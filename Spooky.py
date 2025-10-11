@@ -1,3 +1,5 @@
+import random
+import time
 import plasma
 import colours
 
@@ -17,6 +19,19 @@ class Spooky:
             [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49],
             [2, 3, 8, 9, 14, 15, 20, 21, 26, 27, 32, 33, 38, 39, 44, 45],
             ]
+        # Lightning flash count range
+        self.flash_count_min = 5
+        self.flash_count_max = 15
+        # Lightning brightness range
+        self.flash_brightness_min = 10
+        self.flash_brightness_max = 255
+        # Lightning duration range in ms
+        self.flash_duration_min = 5
+        self.flash_duration_max = 75
+        # Delay between lightning flashes range in ms
+        self.next_flash_delay_min = 0
+        self.next_flash_delay_max = 75
+        
         
     def startup(self):
         """
@@ -24,8 +39,24 @@ class Spooky:
         """
         
         self.strip.start()
+        self.clear()
+            
+    def set_all(self, colour):
+        """
+            Set all LEDs in the strip to the same colour at once
+            
+            Args:
+                colour: Tuple containing RGB value
+        """
+        r, g, b = colour
         for i in range(self.NUM_LEDS):
-            self.strip.set_rgb(i, 0, 0, 0)
+            self.strip.set_rgb(i, r, g, b)
+            
+    def clear(self):
+        """
+            Set all lights to 0, 0, 0, effectively turning them off
+        """
+        self.set_all(colours.BLANK)
             
     def cycle_background(self):
         """
@@ -36,11 +67,32 @@ class Spooky:
         else:
             self.current_bg_i += 1
             
-        print(self.bg_colours[self.current_bg_i])
-        r, g, b = self.bg_colours[self.current_bg_i]
-        print(r)
-        print(g)
-        print(b)
+        colour = self.bg_colours[self.current_bg_i]
         
-        for i in range(self.NUM_LEDS):
-            self.strip.set_rgb(i, r, g, b)
+        self.set_all(colour)
+            
+    def toggle_lightning(self, button_a):
+        """
+            Toggles lightning effects, button_a is required to break out of the while loop
+            since I'm not touching threading on a 2350
+            
+            Args:
+                button_a: button_a instance of Button
+        """
+        self.do_lightning()
+        
+    def do_lightning(self):
+        """
+            Flashes LEDs in a lightning effect
+        """
+        flash_count = random.randint(self.flash_count_min, self.flash_count_max)
+        
+        for i in range(flash_count):
+            # get flash brightness
+            f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
+            flash_colour = (f_b, f_b, f_b)
+            self.set_all(flash_colour)
+            time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
+            self.set_all(self.bg_colours[self.current_bg_i])
+            time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
+        
