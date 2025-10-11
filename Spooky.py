@@ -12,6 +12,11 @@ class Spooky:
         self.bg_colours = [colours.BLANK, colours.RED, colours.GREEN, colours.BLUE, colours.ORANGE, colours.TEAL]
         # Index of self.bg_colours of the currently selected background colour
         self.current_bg_i = 0
+        self.led_grid = [
+            [0, 5, 6, 11, 12, 17, 18, 23, 24, 29, 30, 35, 36, 41, 42, 47, 48],
+            [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49],
+            [2, 3, 8, 9, 14, 15, 20, 21, 26, 27, 32, 33, 38, 39, 44, 45],
+            ]
         
     def startup(self):
         """
