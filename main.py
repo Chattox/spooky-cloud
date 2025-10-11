@@ -6,6 +6,7 @@
     Lets see how quickly Pimoroni's proprietary hardware goes south this time
 """
 
+import time
 from pimoroni import Button
 from Spooky import Spooky
 
@@ -14,3 +15,8 @@ button_boot = Button("USER_SW")
 cloud = Spooky(50)
 
 cloud.startup()
+
+while True:
+    if button_boot.read():
+        cloud.cycle_background()
+        time.sleep(0.3)
