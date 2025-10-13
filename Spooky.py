@@ -26,7 +26,7 @@ class Spooky:
         self.flash_count_max = 15
         # Lightning brightness range
         self.flash_brightness_min = 10
-        self.flash_brightness_max = 255
+        self.flash_brightness_max = 100
         # Lightning duration range in ms
         self.flash_duration_min = 5
         self.flash_duration_max = 75
@@ -68,7 +68,6 @@ class Spooky:
         new_h = h / 360
         new_s = s / 100
         new_v = v / 100
-        
         return (new_h, new_s, new_v)
         
     def get_cur_bg(self):
@@ -190,7 +189,7 @@ class Spooky:
         for i in range(flash_count):
             # get flash brightness
             f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
-            flash_colour = (f_b, f_b, f_b)
+            flash_colour = (0.0, 0.0, f_b)
             self.set_all(flash_colour)
             time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
             self.set_all(self.get_cur_bg())
