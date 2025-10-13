@@ -55,6 +55,8 @@ class Spooky:
         self.strip.start()
         self.clear()
         self.plasma_led.set_rgb(0, 255, 0)
+        for i in range(len(self.bg_colours)):
+            self.bg_colours[i] = self.convert_hsv(self.bg_colours[i])
         
     def convert_hsv(self, hsv):
         """
@@ -91,9 +93,8 @@ class Spooky:
             Args:
                 colour: Tuple containing HSV value
         """
-        h, s, v = self.convert_hsv(colour)
         for i in range(self.NUM_LEDS):
-            self.strip.set_hsv(i, h, s, v)
+            self.strip.set_hsv(i, *colour)
             
     def clear(self):
         """
@@ -114,7 +115,7 @@ class Spooky:
         
         # Vary the brightness on each LED a little to make it look more natural
         for i in range(self.NUM_LEDS):
-            v_col = self.convert_hsv(self.vary_brightness(colour))
+            v_col = self.vary_brightness(colour)
             self.strip.set_hsv(i, *v_col)
             
     def vary_brightness(self, col):
@@ -133,7 +134,7 @@ class Spooky:
             return col
         
         # Get variance
-        v = random.randint(self.b_variance_min, self.b_variance_max)
+        v = random.randint(self.b_variance_min, self.b_variance_max) / 100
         # Decide if positive or negative variance
         i = random.randint(0,1)
         if i == 0:
@@ -145,8 +146,8 @@ class Spooky:
         varied_col = list(col)
         
         brightness = varied_col[2] + v
-        if brightness > 100.0:
-            brightness = 100.0
+        if brightness > 1.0:
+            brightness = 1.0
         elif brightness < 0.0:
             brightness = 0.0
         
@@ -249,18 +250,22 @@ class Spooky:
         
         # Do lightning on them
         flash_count = random.randint(self.flash_count_min, self.flash_count_max)
-        bg_c = self.convert_hsv(self.get_cur_bg())
+        bg_c = self.get_cur_bg()
         
         for i in range(flash_count):
             # get flash brightness
             f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
-            f_c = self.convert_hsv((0.0, 0.0, f_b))
+            f_c = (0.0, 0.0, f_b)
             for i in range(len(flash_leds)):
                 self.strip.set_hsv(flash_leds[i], *f_c)
             time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
             for i in range(len(flash_leds)):
                 self.strip.set_hsv(flash_leds[i], *bg_c)
             time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
+        # Reset flashed LEDs to varied bg
+        for i in range(len(flash_leds)):
+                varied_bg = self.vary_brightness(bg_c)
+                self.strip.set_hsv(flash_leds[i], *varied_bg)
         
         
             
@@ -270,6 +275,7 @@ class Spooky:
         """
         
         flash_count = random.randint(self.flash_count_min, self.flash_count_max)
+        bg_c = self.get_cur_bg()
         
         for i in range(flash_count):
             # get flash brightness
@@ -277,6 +283,10 @@ class Spooky:
             flash_colour = (0.0, 0.0, f_b)
             self.set_all(flash_colour)
             time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
-            self.set_all(self.get_cur_bg())
+            self.set_all(bg_c)
             time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
+        # Reset LEDs to varied background
+        for i in range(self.NUM_LEDS):
+                varied_bg = self.vary_brightness(bg_c)
+                self.strip.set_hsv(i, *varied_bg)
         
