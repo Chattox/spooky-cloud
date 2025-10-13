@@ -36,6 +36,11 @@ class Spooky:
         # Range for brightness variance of background lighting
         self.b_variance_min = 0
         self.b_variance_max = 50
+        # Whether lightning routine is active
+        self.lightning_active = False
+        # Delay range for lightning strikes in seconds
+        self.lightning_delay_min = 0
+        self.lightning_delay_max = 5
              
     def startup(self):
         """
@@ -154,7 +159,27 @@ class Spooky:
             Args:
                 button_a: button_a instance of Button
         """
-        self.do_lightning()
+        # If not active, start lightning loop
+        if self.lightning_active is False:
+            self.lightning_active = True
+            self.plasma_led.set_rgb(0, 0, 255)
+            print("Starting lightning loop")
+            while self.lightning_active is True:
+                print("Lightning!")
+                self.do_lightning()
+                # Delay until next lightning strike in seconds
+                delay = random.randint(self.lightning_delay_min, self.lightning_delay_max)
+                print(f"Delay until next strike: {delay} seconds")
+                # Very rough count of time passed
+                elapsed = 0.0
+                while elapsed < delay:
+                    if button_a.read():
+                        self.lightning_active = False
+                        self.plasma_led.set_rgb(0, 255, 0)
+                        print("Stopping lightning loop")
+                        break
+                    elapsed += 0.1
+                    time.sleep(0.1)
         
     def do_lightning(self):
         """
