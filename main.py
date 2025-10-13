@@ -20,3 +20,7 @@ while True:
     if button_boot.read():
         cloud.cycle_background()
         time.sleep(0.3)
+        
+    if button_a.read():
+        cloud.toggle_lightning(button_a)
+        time.sleep(0.3)
