@@ -46,6 +46,14 @@ class Spooky:
         # Range of localised lightning radius
         self.flash_radius_min = 0
         self.flash_radius_max = 2
+        # Range for number of extra strike on a local strike
+        self.extra_strikes_min = 0
+        self.extra_strikes_max = 3
+        # Max distance away from previous strike extra strikes can be
+        self.max_extra_distance = 1
+        # Range for delay between extra strikes in ms
+        self.extra_strike_delay_min = 0
+        self.extra_strike_delay_max = 50
              
     def startup(self):
         """
@@ -192,14 +200,76 @@ class Spooky:
         """
         
         if self.localised:
-            # Still have a 1 in 10 chance of full lightning
-            i = random.randint(1, 10)
+            # Still have a 1 in 20 chance of full lightning
+            i = random.randint(1, 20)
             if i == 10:
                 self.full_lightning()
             else:
                 self.localised_lightning()
         else:
             self.full_lightning()
+            
+    def get_area_coords(self, origin_yx):
+        """
+            Return corner coords of a square area on the led grid based
+            on given origin coordinates and a randomly generated radius
+            
+            Args:
+                origin_xy: tuple of centre point y x coordinates
+                
+            Returns:
+                tuple containing 2 tuples of bottom left and top right coordinates
+        """
+        
+        o_y, o_x = origin_yx
+        
+        radius = random.randint(self.flash_radius_min, self.flash_radius_max)
+        rad_min_x = o_x - radius
+        rad_max_x = o_x + radius
+        rad_min_y = o_y - radius
+        rad_max_y = o_y + radius
+        # Cap points within grid bounds
+        rad_min_x = 0 if rad_min_x < 0 else rad_min_x
+        rad_max_x = len(self.led_grid[0]) - 1 if rad_max_x > len(self.led_grid[0]) - 1 else rad_max_x
+        rad_min_y = 0 if rad_min_y < 0 else rad_min_y
+        rad_max_y = len(self.led_grid) - 1 if rad_max_y > len(self.led_grid) - 1 else rad_max_y
+        
+        return ((rad_min_x, rad_min_y), (rad_max_x, rad_max_y))
+    
+    def get_area_leds(self, coords):
+        """
+            Get a list of LED addresses within a set of coordinates
+            
+            Args:
+                coords: a tuple containing 2 tuples of bottom left and top right coordinates
+                
+            Returns:
+                a list of ints corresponding to LEDs on the grid
+        """
+        
+        b_l, t_r = coords
+        
+        # Get LEDs within flash grid bounds
+        flash_leds = []
+        if b_l == t_r:
+            flash_leds.append(self.led_grid[b_l[1]][b_l[0]])
+        else:
+            min_x, min_y = b_l
+            max_x, max_y = t_r
+            # + 1 to ranges to get full square since range() isn't inclusive of max arg
+            for i in range((max_y - min_y) + 1):
+                for j in range((max_x - min_x) + 1):
+                    target_y = min_y + i
+                    target_x = min_x + j
+                    # skip the end of the top row since there's no led there
+                    if target_y == 2 and target_x == 16:
+                        continue
+                    else:
+                        flash_leds.append(self.led_grid[target_y][target_x])
+                        
+        print(flash_leds)
+                        
+        return flash_leds
         
     def localised_lightning(self):
         """
@@ -207,68 +277,64 @@ class Spooky:
             localised lighting strikes within the cloud
         """
         
-        # First pick a point on the grid
+        origin_points = []
+        # First pick an origin point for the initial strike and add that to the list
         origin_y = random.randint(0, len(self.led_grid) - 1)
         origin_x = random.randint(0, len(self.led_grid[origin_y]) - 1)
-        origin_led = self.led_grid[origin_y][origin_x]
+        origin_points.append((origin_y, origin_x))
         
-        # Then get it's area corner coords
-        radius = random.randint(self.flash_radius_min, self.flash_radius_max)
-        rad_min_x = origin_x - radius
-        rad_max_x = origin_x + radius
-        rad_min_y = origin_y - radius
-        rad_max_y = origin_y + radius
-        # Cap points within grid bounds
-        rad_min_x = 0 if rad_min_x < 0 else rad_min_x
-        rad_max_x = len(self.led_grid[0]) - 1 if rad_max_x > len(self.led_grid[0]) - 1 else rad_max_x
-        rad_min_y = 0 if rad_min_y < 0 else rad_min_y
-        rad_max_y = len(self.led_grid) - 1 if rad_max_y > len(self.led_grid) - 1 else rad_max_y
-        
-        # Debug logging
-        print("Localised lightning")
-        print(f"Origin: {origin_x}, {origin_y}")
-        print(f"Radius: {radius}")
-        print(f"Area: {rad_min_x}, {rad_min_y} : {rad_max_x}, {rad_max_y}")
-        print(f"Square size: x: {rad_max_x - rad_min_x}, y: {rad_max_y - rad_min_y}")
-        
-        # Get LEDs within flash grid bounds
-        flash_leds = []
-        if radius == 0:
-            flash_leds.append(origin_led)
-            print(flash_leds[0])
-        else:
-            # + 1 to ranges to get full square since range() isn't inclusive of max arg
-            for i in range((rad_max_y - rad_min_y) + 1):
-                for j in range((rad_max_x - rad_min_x) + 1):
-                    target_y = rad_min_y + i
-                    target_x = rad_min_x + j
-                    # skip the end of the top row since there's no led there
-                    if target_y == 2 and target_x == 16:
-                        continue
-                    else:
-                        flash_leds.append(self.led_grid[target_y][target_x])
-        
-        # Do lightning on them
-        flash_count = random.randint(self.flash_count_min, self.flash_count_max)
-        bg_c = self.get_cur_bg()
-        
-        for i in range(flash_count):
-            # get flash brightness
-            f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
-            f_c = (0.0, 0.0, f_b)
-            for i in range(len(flash_leds)):
-                self.strip.set_hsv(flash_leds[i], *f_c)
-            time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
-            for i in range(len(flash_leds)):
-                self.strip.set_hsv(flash_leds[i], *bg_c)
-            time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
-        # Reset flashed LEDs to varied bg
-        for i in range(len(flash_leds)):
-                varied_bg = self.vary_brightness(bg_c)
-                self.strip.set_hsv(flash_leds[i], *varied_bg)
-        
-        
+        # Then add the additional origin points, not too far from the previous
+        num_extras = random.randint(self.extra_strikes_min, self.extra_strikes_max)
+        for i in range(num_extras):
+            y_dist = random.randint(-self.max_extra_distance, self.max_extra_distance)
+            x_dist = random.randint(-self.max_extra_distance, self.max_extra_distance)
+            # Make sure they actually move somewhere
+            while y_dist == 0 and x_dist == 0:
+                y_dist = random.randint(-self.max_extra_distance, self.max_extra_distance)
+                x_dist = random.randint(-self.max_extra_distance, self.max_extra_distance)
             
+            y = origin_points[-1][0] + y_dist
+            x = origin_points[-1][1] + x_dist
+            
+            # Make sure they're not out of bounds
+            y = 0 if y < 0 else y
+            y = len(self.led_grid) - 1 if y > len(self.led_grid) - 1 else y
+            x = 0 if x < 0 else x
+            x = len(self.led_grid[y]) - 1 if x > len(self.led_grid[y]) - 1 else x
+            
+            # Finally, add to the list
+            origin_points.append((y, x))
+            
+        print(origin_points)
+        # Then start going through the strikes
+        for i in range(len(origin_points)):
+            # Get area corner coords
+            corners = self.get_area_coords(origin_points[i])
+            # Get area LEDs
+            flash_leds = self.get_area_leds(corners)
+            
+            # Do the lightning
+            flash_count = random.randint(self.flash_count_min, self.flash_count_max)
+            bg_c = self.get_cur_bg()
+        
+            for i in range(flash_count):
+                # get flash brightness
+                f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
+                f_c = (0.0, 0.0, f_b)
+                for i in range(len(flash_leds)):
+                    self.strip.set_hsv(flash_leds[i], *f_c)
+                time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
+                for i in range(len(flash_leds)):
+                    self.strip.set_hsv(flash_leds[i], *bg_c)
+                time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
+            # Reset flashed LEDs to varied bg
+            for i in range(len(flash_leds)):
+                    varied_bg = self.vary_brightness(bg_c)
+                    self.strip.set_hsv(flash_leds[i], *varied_bg)
+            
+            # Wait out delay until next strike
+            time.sleep_ms(random.randint(self.extra_strike_delay_min, self.extra_strike_delay_max))
+                 
     def full_lightning(self):
         """
             Flashes all LEDs on the strip in a lightning strike
