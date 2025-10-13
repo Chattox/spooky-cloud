@@ -41,6 +41,11 @@ class Spooky:
         # Delay range for lightning strikes in seconds
         self.lightning_delay_min = 0
         self.lightning_delay_max = 5
+        # Whether lightning is localised or fills the whole grid
+        self.localised = True
+        # Range of localised lightning radius
+        self.flash_radius_min = 0
+        self.flash_radius_max = 2
              
     def startup(self):
         """
@@ -182,8 +187,88 @@ class Spooky:
         
     def do_lightning(self):
         """
-            Flashes LEDs in a lightning effect
+            Decides whether lightning will be localised or full grid, then does a lightning strike
         """
+        
+        if self.localised:
+            # Still have a 1 in 10 chance of full lightning
+            i = random.randint(1, 10)
+            if i == 10:
+                self.full_lightning()
+            else:
+                self.localised_lightning()
+        else:
+            self.full_lightning()
+        
+    def localised_lightning(self):
+        """
+            Flashes clusters of LEDs around the grid to simulate
+            localised lighting strikes within the cloud
+        """
+        
+        # First pick a point on the grid
+        origin_y = random.randint(0, len(self.led_grid) - 1)
+        origin_x = random.randint(0, len(self.led_grid[origin_y]) - 1)
+        origin_led = self.led_grid[origin_y][origin_x]
+        
+        # Then get it's area corner coords
+        radius = random.randint(self.flash_radius_min, self.flash_radius_max)
+        rad_min_x = origin_x - radius
+        rad_max_x = origin_x + radius
+        rad_min_y = origin_y - radius
+        rad_max_y = origin_y + radius
+        # Cap points within grid bounds
+        rad_min_x = 0 if rad_min_x < 0 else rad_min_x
+        rad_max_x = len(self.led_grid[0]) - 1 if rad_max_x > len(self.led_grid[0]) - 1 else rad_max_x
+        rad_min_y = 0 if rad_min_y < 0 else rad_min_y
+        rad_max_y = len(self.led_grid) - 1 if rad_max_y > len(self.led_grid) - 1 else rad_max_y
+        
+        # Debug logging
+        print("Localised lightning")
+        print(f"Origin: {origin_x}, {origin_y}")
+        print(f"Radius: {radius}")
+        print(f"Area: {rad_min_x}, {rad_min_y} : {rad_max_x}, {rad_max_y}")
+        print(f"Square size: x: {rad_max_x - rad_min_x}, y: {rad_max_y - rad_min_y}")
+        
+        # Get LEDs within flash grid bounds
+        flash_leds = []
+        if radius == 0:
+            flash_leds.append(origin_led)
+            print(flash_leds[0])
+        else:
+            # + 1 to ranges to get full square since range() isn't inclusive of max arg
+            for i in range((rad_max_y - rad_min_y) + 1):
+                for j in range((rad_max_x - rad_min_x) + 1):
+                    target_y = rad_min_y + i
+                    target_x = rad_min_x + j
+                    # skip the end of the top row since there's no led there
+                    if target_y == 2 and target_x == 16:
+                        continue
+                    else:
+                        flash_leds.append(self.led_grid[target_y][target_x])
+        
+        # Do lightning on them
+        flash_count = random.randint(self.flash_count_min, self.flash_count_max)
+        bg_c = self.convert_hsv(self.get_cur_bg())
+        
+        for i in range(flash_count):
+            # get flash brightness
+            f_b = random.randint(self.flash_brightness_min, self.flash_brightness_max)
+            f_c = self.convert_hsv((0.0, 0.0, f_b))
+            for i in range(len(flash_leds)):
+                self.strip.set_hsv(flash_leds[i], *f_c)
+            time.sleep_ms(random.randint(self.flash_duration_min, self.flash_duration_max))
+            for i in range(len(flash_leds)):
+                self.strip.set_hsv(flash_leds[i], *bg_c)
+            time.sleep_ms(random.randint(self.next_flash_delay_min, self.next_flash_delay_max))
+        
+        
+            
+    def full_lightning(self):
+        """
+            Flashes all LEDs on the strip in a lightning strike
+        """
+        
         flash_count = random.randint(self.flash_count_min, self.flash_count_max)
         
         for i in range(flash_count):
