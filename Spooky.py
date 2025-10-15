@@ -265,9 +265,38 @@ class Spooky:
                     if target_y == 2 and target_x == 16:
                         continue
                     else:
-                        flash_leds.append(self.led_grid[target_y][target_x])
-                        
-        print(flash_leds)
+                        # 1 third of the time, move a target LED around to randomise the flash shape
+                        # a little bit
+                        chance = random.random()
+                        if chance > 0.33:
+                            flash_leds.append(self.led_grid[target_y][target_x])
+                        else:
+                            k = random.random()
+                            move = 1 if k >= 0.5 else -1
+                            move_x = target_x + move
+                            if move_x < 0:
+                                move_x = 0
+                            elif move_x > len(self.led_grid[target_y]) - 1:
+                                move_x = len(self.led_grid[target_y]) - 1
+                                
+                            # Keep shifting the LED if the target is already present, but
+                            # after 20 failed attempts just drop the LED so the loop doesn't
+                            # get stuck
+                            count = 0
+                            while move_x in flash_leds:
+                                print("led already present")
+                                move_x = move_x + move
+                                if move_x < 0:
+                                    move_x = 0
+                                elif move_x > len(self.led_grid[target_y]) - 1:
+                                    move_x = len(self.led_grid[target_y]) - 1
+                                if count >= 20:
+                                    print("giving up on this led")
+                                    break
+                                else:
+                                    count += 1
+                                    
+                            flash_leds.append(self.led_grid[target_y][move_x])
                         
         return flash_leds
         
